@@ -73,6 +73,9 @@
   }
   button.chip { cursor: pointer; }
   button.chip:hover { color: var(--text); border-color: #444; }
+  .focus-chip { color: var(--accent); border-color: var(--accent); background: var(--accent-glow); box-shadow: 0 0 8px rgba(0, 255, 102, 0.45), inset 0 0 6px rgba(0, 255, 102, 0.15); text-shadow: 0 0 6px rgba(0, 255, 102, 0.6); animation: glow 2.4s ease-in-out infinite; }
+  button.focus-chip:hover { color: #fff; border-color: var(--accent); box-shadow: 0 0 14px rgba(0, 255, 102, 0.7), inset 0 0 8px rgba(0, 255, 102, 0.25); }
+  @keyframes glow { 50% { box-shadow: 0 0 14px rgba(0, 255, 102, 0.7), inset 0 0 8px rgba(0, 255, 102, 0.25); } }
   .chip.running { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
 
   /* salary input */
@@ -141,7 +144,17 @@
     user-select: none;
     -webkit-user-select: none;
   }
-.meter-label { font-size: clamp(1.05rem, 4.4vw, 1.35rem); color: var(--text-sub); margin-bottom: 14px; letter-spacing: 0.5px; line-height: 1.35; }
+.meter-box { position: relative; }
+  .expand-btn { position: absolute; bottom: 8px; right: 8px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: var(--text-sub); cursor: pointer; opacity: 0.7; transition: opacity .2s, color .2s; }
+  .expand-btn:hover { opacity: 1; color: var(--text); }
+  .expand-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; opacity: 1; }
+  .expand-btn svg { width: 26px; height: 26px; }
+  .meter-hint { position: absolute; left: 12px; right: 56px; bottom: 20px; font-size: 0.8rem; color: var(--accent); opacity: 0; transform: translateY(4px); transition: opacity .5s, transform .5s; pointer-events: none; }
+  .meter-hint.show { opacity: 0.9; transform: none; }
+  .expand-btn.nudge { color: var(--accent); opacity: 1; animation: nudge 1s ease-in-out 3; }
+  @keyframes nudge { 50% { transform: scale(1.25); } }
+  body.display .expand-btn, body.display .meter-hint { display: none; }
+  .meter-label { font-size: clamp(1.05rem, 4.4vw, 1.35rem); color: var(--text-sub); margin-bottom: 14px; letter-spacing: 0.5px; line-height: 1.35; }
   body.display .meter-label { font-size: clamp(1.15rem, 5vmin, 2.4rem); margin-bottom: 2.5vh; }
   .meter-main {
     display: inline-block;
@@ -277,7 +290,8 @@
   body.display.portrait .stats-row { flex-direction: column; align-items: center; gap: 6px; }
 
   @media (prefers-reduced-motion: reduce) {
-    .container, .bar-fill, .marker .flag, .hint, .runner { transition: none; }
+    .container, .bar-fill, .marker .flag, .hint, .runner, .meter-hint { transition: none; }
+    .expand-btn.nudge, .focus-chip { animation: none; }
     .runner img { animation: none; }
     .btn-reset.holding .fill { transition: transform 1.5s linear; }
   }
@@ -288,7 +302,7 @@
 <div class="container" id="container">
   <div class="header">
     <div class="title" data-i18n="title">跳錶</div>
-    <button id="focusBtn" class="chip" type="button">專注</button>
+    <button id="focusBtn" class="chip focus-chip" type="button">專注模式</button>
     <button id="langBtn" class="chip" type="button" aria-label="Language">繁</button>
     <div id="statusBadge" class="chip">已暫停</div>
   </div>
@@ -304,6 +318,8 @@
   </div>
 
   <div class="meter-box" id="meterBox" tabindex="0" role="button" aria-label="Display mode">
+    <button type="button" class="expand-btn" id="expandBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg></button>
+    <div class="meter-hint" id="meterHint" aria-live="polite"></div>
     <div class="meter-label" id="meterLabel"></div>
     <div id="meter" class="meter-main"><span class="sym" id="mSym">HK$</span><span id="mInt">0</span><span class="dec" id="mDec">.0000</span></div>
   </div>
@@ -390,7 +406,7 @@ const DECIMALS = 4;
 
 const I18N = {
   'zh-Hant': {
-    tag: '港', html: 'zh-HK', sec: n => `${n} 秒`, tapHint: '撳一下換一句', focus: '專注', hide: '隱藏月薪', show: '顯示月薪', title: '跳錶', salary: '月薪', start: '開始', pause: '暫停', reset: '歸零', resetAria: '長按歸零',
+    tag: '港', html: 'zh-HK', hintFocus: '撳數字或右下角 ⤢，全屏睇錢跳', expand: '全屏專注模式', sec: n => `${n} 秒`, tapHint: '撳一下換一句', focus: '專注模式', hide: '隱藏月薪', show: '顯示月薪', title: '跳錶', salary: '月薪', start: '開始', pause: '暫停', reset: '歸零', resetAria: '長按歸零',
     running: '計時中', paused: '已暫停',
     lblIdle: '撳「開始」，睇下你每秒袋幾多', lblRun: '由你撳「開始」到而家，已經袋咗', lblPause: '停咗喇，暫時袋咗', perMin: '每分鐘', perHour: '每小時', footer: '資料只存在你的瀏覽器',
     nextIn: (d, f, n) => `再過 <span class="amt">${d}</span>，就賺夠 ${f} ${n}一個月的薪水`,
@@ -403,7 +419,7 @@ const I18N = {
     exit: '輕按任何位置返回', display: '只顯示數字',
   },
   'zh-Hans': {
-    tag: '简', html: 'zh-CN', sec: n => `${n} 秒`, tapHint: '点一下换一句', focus: '专注', hide: '隐藏月薪', show: '显示月薪', title: '跳表', salary: '月薪', start: '开始', pause: '暂停', reset: '归零', resetAria: '长按归零',
+    tag: '简', html: 'zh-CN', hintFocus: '点数字或右下角 ⤢，全屏看钱跳', expand: '全屏专注模式', sec: n => `${n} 秒`, tapHint: '点一下换一句', focus: '专注模式', hide: '隐藏月薪', show: '显示月薪', title: '跳表', salary: '月薪', start: '开始', pause: '暂停', reset: '归零', resetAria: '长按归零',
     running: '计时中', paused: '已暂停',
     lblIdle: '点「开始」，看看你每秒到账多少', lblRun: '从你点下「开始」起，已到账', lblPause: '暂停了，目前已到账', perMin: '每分钟', perHour: '每小时', footer: '数据只保存在你的浏览器',
     nextIn: (d, f, n) => `再过 <span class="amt">${d}</span>，就赚够 ${f} ${n}一个月的工资`,
@@ -416,7 +432,7 @@ const I18N = {
     exit: '轻按任意位置返回', display: '只显示数字',
   },
   en: {
-    tag: 'EN', html: 'en', sec: n => `${n}s`, tapHint: 'Tap for another one', focus: 'Focus', hide: 'Hide salary', show: 'Show salary', title: 'Salary meter', salary: 'Monthly salary', start: 'Start', pause: 'Pause', reset: 'Reset', resetAria: 'Hold to reset',
+    tag: 'EN', html: 'en', hintFocus: 'Tap the number or ⤢ to watch it full screen', expand: 'Full-screen focus mode', sec: n => `${n}s`, tapHint: 'Tap for another one', focus: 'Focus mode', hide: 'Hide salary', show: 'Show salary', title: 'Salary meter', salary: 'Monthly salary', start: 'Start', pause: 'Pause', reset: 'Reset', resetAria: 'Hold to reset',
     running: 'Running', paused: 'Paused',
     lblIdle: 'Hit Start and watch the money roll in', lblRun: "Since you hit Start, you've pocketed", lblPause: 'Paused. Pocketed so far', perMin: 'Per min', perHour: 'Per hour', footer: 'Your data stays in this browser',
     nextIn: (d, f, n) => `<span class="amt">${d}</span> until you've earned a month's pay of ${n} ${f}`,
@@ -431,7 +447,7 @@ const I18N = {
 };
 // 台灣版：沿用繁體，換成台灣用語
 I18N['zh-TW'] = Object.assign({}, I18N['zh-Hant'], {
-  tag: '台', html: 'zh-TW', tapHint: '點一下換一句', footer: '資料只存在你的瀏覽器裡',
+  tag: '台', html: 'zh-TW', hintFocus: '點數字或右下角 ⤢，全螢幕看錢跳', expand: '全螢幕專注模式', tapHint: '點一下換一句', footer: '資料只存在你的瀏覽器裡',
   lblIdle: '按下「開始」，看看你每秒入袋多少', lblRun: '從你按下「開始」到現在，已經默默入袋', lblPause: '先暫停一下，目前已入袋',
   nextIn: (d, f, n) => `再過 <span class="amt">${d}</span>，就賺到 ${f} ${n}一個月的薪水`,
   reached: (day, f, n) => `本月第 ${day} 天，你已賺到 ${f} ${n}一整個月的薪水`,
@@ -452,6 +468,7 @@ let state = {
   lang: 'zh-Hant',
   running: false,
   hidePay: false,    // 隱藏月薪（防偷看）
+  hintCount: 0,      // 「全屏」提示已出現次數（最多兩次）
   bankedUSD: 0,      // 上一段計時之前已累積的金額
   segStart: null     // 本段計時開始的真實時間（Date.now）
 };
@@ -526,8 +543,10 @@ function renderStatic() {
   document.documentElement.lang = t.html;
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t[el.dataset.i18n]; });
   langBtn.textContent = t.tag;
-  $('focusBtn').textContent = t.focus;
   nextText.title = t.tapHint;
+  $('focusBtn').textContent = t.focus;
+  $('expandBtn').setAttribute('aria-label', t.expand);
+  $('expandBtn').title = t.expand;
   resetBtn.setAttribute('aria-label', t.resetAria);
   meterBox.setAttribute('aria-label', t.display);
   curSelect.value = state.currency;
@@ -1041,7 +1060,25 @@ function setRunning(on) {
   save(); renderStatus(); renderMeter(true);
   on ? requestWake() : releaseWake();
 }
-startBtn.addEventListener('click', () => setRunning(!state.running));
+startBtn.addEventListener('click', () => {
+  setRunning(!state.running);
+  if (state.running) maybeHint();
+});
+$('expandBtn').addEventListener('click', e => { e.stopPropagation(); setDisplay(true); });
+$('focusBtn').addEventListener('click', e => { e.stopPropagation(); setDisplay(true); });
+
+// 頭兩次按「開始」時提示一次可以全屏
+let hintTimers = [];
+function maybeHint() {
+  if (state.hintCount >= 2 || document.body.classList.contains('display')) return;
+  state.hintCount++; save();
+  const h = $('meterHint'), b = $('expandBtn');
+  hintTimers.forEach(clearTimeout);
+  hintTimers = [
+    setTimeout(() => { h.textContent = T().hintFocus; h.classList.add('show'); b.classList.add('nudge'); }, 1000),
+    setTimeout(() => { h.classList.remove('show'); b.classList.remove('nudge'); }, 4500)
+  ];
+}
 
 infoBtn.addEventListener('click', () => {
   const open = sourcesEl.classList.toggle('open');
@@ -1096,7 +1133,6 @@ function setDisplay(on, quiet) {
 meterBox.addEventListener('click', e => {
   if (!document.body.classList.contains('display')) { e.stopPropagation(); setDisplay(true); }
 });
-$('focusBtn').addEventListener('click', e => { e.stopPropagation(); setDisplay(true); });
 meterBox.addEventListener('keydown', e => {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDisplay(!document.body.classList.contains('display')); }
 });
