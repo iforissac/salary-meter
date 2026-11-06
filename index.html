@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="跳錶">
+<title>跳錶 Salary Meter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #000000;
+    --card: #0d0d0d;
+    --well: #050505;
+    --border: #2a2a2a;
+    --text: #e0e0e0;
+    --text-sub: #8a8a8a;
+    --accent: #00ff66;
+    --accent-dim: #00cc52;
+    --accent-glow: rgba(0, 255, 102, 0.15);
+    --mono: 'Share Tech Mono', ui-monospace, 'SF Mono', Menlo, Consolas, 'Roboto Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+
+  body {
+    font-family: var(--mono);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 560px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 22px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: transform 2s ease-in-out;
+  }
+
+  /* header */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+  .title { font-size: 0.85rem; letter-spacing: 2px; color: var(--text-sub); margin-right: auto; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-sub);
+  }
+  button.chip { cursor: pointer; }
+  button.chip:hover { color: var(--text); border-color: #444; }
+  .chip.running { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+  /* salary input */
+  .label { font-size: 0.72rem; color: var(--text-sub); letter-spacing: 1px; }
+  .input-section { display: flex; align-items: center; gap: 10px; }
+  .input-section .label { flex: none; }
+  .input-section .input-row { flex: 1; min-width: 0; }
+  /* 平時沒有框，像一行普通文字；滑過或輸入時才出現框 */
+  .input-row { display: flex; border: 1px solid transparent; background: transparent; transition: border-color .2s, background .2s; }
+  .input-row:hover { border-color: var(--border); }
+  .input-row:has(.salary-input:focus), .input-row:has(.cur-select:focus) { border-color: var(--accent); background: var(--well); }
+  .input-row .cur-select, .input-row .eye-btn { border-color: transparent; transition: border-color .2s, background-size .2s; }
+  .input-row:hover .cur-select, .input-row:hover .eye-btn,
+  .input-row:has(.salary-input:focus) .cur-select, .input-row:has(.salary-input:focus) .eye-btn,
+  .input-row:has(.cur-select:focus) .cur-select, .input-row:has(.cur-select:focus) .eye-btn { border-color: var(--border); }
+  .input-row:not(:hover):not(:has(:focus)) .cur-select { background-size: 0 0; padding-right: 6px; }
+  .cur-select {
+    appearance: none; -webkit-appearance: none;
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--border);
+    color: var(--text-sub);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    padding: 0 22px 0 10px;
+    cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-sub) 50%), linear-gradient(135deg, var(--text-sub) 50%, transparent 50%);
+    background-position: calc(100% - 13px) 50%, calc(100% - 8px) 50%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+  }
+  .cur-select option { background: #111; color: var(--text); }
+.salary-mask { display: none; flex: 1; text-align: left; padding: 6px 10px; color: var(--text-sub); font-size: 1rem; letter-spacing: 3px; align-self: center; }
+  .eye-btn { flex: none; width: 38px; background: transparent; border: none; border-left: 1px solid var(--border); color: var(--text-sub); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .eye-btn:hover { color: var(--text); }
+  .eye-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .eye-btn svg { width: 18px; height: 18px; }
+  body.hide-pay .salary-input { display: none; }
+  body.hide-pay .salary-mask { display: block; }
+  .salary-input {
+    flex: 1; min-width: 0;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 1rem;
+    padding: 6px 10px;
+    outline: none;
+    text-align: left;
+    color: var(--text-sub);
+    transition: color .2s;
+  }
+  .salary-input::-webkit-outer-spin-button, .salary-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .salary-input { -moz-appearance: textfield; appearance: textfield; }
+  .salary-input:focus { color: #fff;
+  }
+
+  /* meter */
+  .meter-box {
+    background: var(--well);
+    border: 1px solid var(--border);
+    padding: 34px 14px 38px;
+    text-align: center;
+    cursor: pointer;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+.meter-label { font-size: clamp(1.05rem, 4.4vw, 1.35rem); color: var(--text-sub); margin-bottom: 14px; letter-spacing: 0.5px; line-height: 1.35; }
+  body.display .meter-label { font-size: clamp(1.15rem, 5vmin, 2.4rem); margin-bottom: 2.5vh; }
+  .meter-main {
+    display: inline-block;
+    white-space: nowrap;
+    color: var(--accent);
+    text-shadow: 0 0 12px var(--accent-glow);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    font-size: 48px;
+  }
+  .meter-main .sym { font-size: 0.38em; color: var(--accent-dim); margin-right: 0.15em; vertical-align: 0.9em; }
+  .meter-main .dec { font-size: 0.55em; opacity: 0.6; }
+
+  .stats-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.78rem;
+    color: var(--text-sub);
+    border-top: 1px dashed var(--border);
+    padding-top: 10px;
+  }
+  .stats-row b { color: var(--text); font-weight: normal; }
+
+  /* ladder */
+  .ladder {
+    padding: 4px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ladder-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .info-btn {
+    background: none; border: 1px solid var(--border); color: var(--text-sub);
+    width: 20px; height: 20px; border-radius: 50%;
+    font-family: var(--mono); font-size: 0.7rem; cursor: pointer; flex: none;
+  }
+  .info-btn:hover { color: var(--text); }
+  .next-text { font-size: 0.78rem; color: var(--text); cursor: pointer; user-select: none; -webkit-user-select: none; }
+  .next-text:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .next-text .amt { color: var(--accent); }
+  .track { position: relative; padding-top: 30px; margin-top: 2px; }
+  .runner { position: absolute; bottom: 7px; left: 0; width: 30px; transform: translateX(-62%); transition: left 1s linear; pointer-events: none; }
+  .runner img { display: block; width: 100%; height: auto; animation: bob 0.34s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+  @keyframes bob { from { transform: translateY(0) rotate(-3deg); } to { transform: translateY(-3px) rotate(3deg); } }
+  .bar-wrap { position: relative; }
+  .bar { width: 100%; height: 6px; background: #1c1c1c; border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; width: 0; background: var(--accent); border-radius: 3px; transition: width 1s linear; }
+  .tick { position: absolute; top: -2px; width: 2px; height: 10px; background: #3a3a3a; transform: translateX(-50%); }
+  .tick.unlocked { background: var(--accent); }
+  .markers { position: relative; height: 24px; margin-top: 4px; }
+  .marker { position: absolute; top: 0; display: flex; gap: 3px; white-space: nowrap; }
+  .marker .flag { font-size: 0.95rem; line-height: 1.15; opacity: 0.35; transition: opacity .4s; }
+  .marker .flag.unlocked { opacity: 1; }
+
+.month-earned { font-size: 0.72rem; color: var(--text-sub); }
+  .month-earned .amt { color: var(--text); }
+  body.display .month-earned { text-align: center; font-size: clamp(0.75rem, 2.2vmin, 1rem); }
+  .sources { display: none; font-size: 0.68rem; color: var(--text-sub); line-height: 1.6; border-top: 1px dashed var(--border); padding-top: 8px; }
+  .sources.open { display: block; }
+  .sources li { list-style: none; }
+
+  /* buttons */
+  .btn-group { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
+  .btn {
+    position: relative;
+    overflow: hidden;
+    background: #1a1a1a;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    padding: 12px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    touch-action: manipulation;
+    user-select: none; -webkit-user-select: none;
+  }
+  .btn:hover { background: #262626; }
+  .btn:focus-visible, .chip:focus-visible, .info-btn:focus-visible, .cur-select:focus-visible, .meter-box:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn-start { background: var(--accent); color: #000; border-color: var(--accent); }
+  .btn-start:hover { background: var(--accent-dim); }
+
+  /* long-press reset: fill grows while held */
+  .btn-reset .fill {
+    position: absolute; inset: 0;
+    background: #ff4d4d;
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.25s ease-out;
+    pointer-events: none;
+  }
+  .btn-reset .txt { position: relative; }
+  .btn-reset.holding .fill { transform: scaleX(1); transition: transform 1.5s linear; }
+  .btn-reset.holding .txt { color: #000; transition: color 1.2s linear 0.3s; }
+  .btn-reset.done { border-color: var(--accent); }
+  .btn-reset.done .fill { background: var(--accent); transform: scaleX(1); transition: none; }
+
+  .footer { text-align: center; font-size: 0.68rem; color: var(--text-sub); }
+
+  .hint {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    font-size: 0.75rem; color: var(--text-sub);
+    opacity: 0; transition: opacity .6s; pointer-events: none;
+  }
+  .hint.show { opacity: 1; }
+
+  /* ---------- display mode: only the number ---------- */
+  body.display { padding: 0; }
+  body.display .container { max-width: none; width: 100vw; min-height: 100vh; border: none; background: var(--bg); justify-content: center; padding: 4vh 4vw; gap: 3vh; }
+  body.display .header,
+  body.display .input-section,
+  body.display .btn-group,
+  body.display .footer,
+  body.display .markers,
+  body.display .sources,
+  body.display .info-btn { display: none; }
+  body.display .meter-box { border: none; background: transparent; padding: 0; }
+  body.display .stats-row { border-top: none; justify-content: center; gap: 28px; font-size: clamp(0.8rem, 2.4vmin, 1.1rem); }
+  body.display .ladder { border: none; background: transparent; padding: 0; max-width: 720px; width: 100%; margin: 0 auto; }
+  body.display .ladder-head { justify-content: center; }
+  body.display .next-text { font-size: clamp(0.8rem, 2.4vmin, 1.1rem); color: var(--text-sub); }
+  body.display .bar { height: 3px; }
+  body.display .tick { height: 7px; top: -2px; }
+  body.display .runner { width: clamp(26px, 6vmin, 44px); bottom: 4px; }
+
+  /* ---------- 直立專注模式：數字分兩行，盡量放大 ---------- */
+  body.display.portrait .container { gap: 4vh; }
+  body.display.portrait .meter-main { display: inline-flex; flex-direction: column; align-items: center; line-height: 0.95; }
+  body.display.portrait .meter-main .sym { font-size: 0.26em; vertical-align: 0; margin: 0 0 0.15em; }
+  body.display.portrait .meter-main .dec { font-size: 0.42em; margin-top: 0.1em; }
+  body.display.portrait .stats-row { flex-direction: column; align-items: center; gap: 6px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .container, .bar-fill, .marker .flag, .hint, .runner { transition: none; }
+    .runner img { animation: none; }
+    .btn-reset.holding .fill { transition: transform 1.5s linear; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container" id="container">
+  <div class="header">
+    <div class="title" data-i18n="title">跳錶</div>
+    <button id="focusBtn" class="chip" type="button">專注</button>
+    <button id="langBtn" class="chip" type="button" aria-label="Language">繁</button>
+    <div id="statusBadge" class="chip">已暫停</div>
+  </div>
+
+  <div class="input-section">
+    <label class="label" for="salaryInput" data-i18n="salary">月薪</label>
+    <div class="input-row">
+      <select id="curSelect" class="cur-select" aria-label="Currency"></select>
+      <input type="number" id="salaryInput" class="salary-input" inputmode="decimal" min="0" step="any">
+      <span class="salary-mask" id="salaryMask" aria-hidden="true">*****</span>
+      <button type="button" class="eye-btn" id="eyeBtn" aria-pressed="false"></button>
+    </div>
+  </div>
+
+  <div class="meter-box" id="meterBox" tabindex="0" role="button" aria-label="Display mode">
+    <div class="meter-label" id="meterLabel"></div>
+    <div id="meter" class="meter-main"><span class="sym" id="mSym">HK$</span><span id="mInt">0</span><span class="dec" id="mDec">.0000</span></div>
+  </div>
+
+  <div class="stats-row">
+    <div><span data-i18n="perMin">每分鐘</span> <b id="perMin">0.00</b></div>
+    <div><span data-i18n="perHour">每小時</span> <b id="perHour">0.00</b></div>
+  </div>
+
+  <div class="ladder">
+    <div class="ladder-head">
+      <div class="next-text" id="nextText" tabindex="0" role="button"></div>
+      <button class="info-btn" id="infoBtn" type="button" aria-expanded="false" aria-controls="sources">i</button>
+    </div>
+    <div class="track">
+      <div class="runner" id="runner"><img alt="" src="data:image/png;base64,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"></div>
+      <div class="bar-wrap"><div class="bar"><div class="bar-fill" id="barFill"></div></div><div id="ticks"></div></div>
+    </div>
+    <div class="markers" id="markers"></div>
+    <div class="month-earned" id="monthEarned"></div>
+    <ul class="sources" id="sources"></ul>
+  </div>
+
+  <div class="btn-group">
+    <button id="startBtn" class="btn btn-start" type="button">開始</button>
+    <button id="resetBtn" class="btn btn-reset" type="button"><span class="fill"></span><span class="txt" data-i18n="reset">歸零</span></button>
+  </div>
+
+  <div class="footer" data-i18n="footer">資料只存在你的瀏覽器</div>
+</div>
+
+<div class="hint" id="hint"></div>
+
+<script>
+/* ================= 設定（可修改） ================= */
+// 匯率：1 美元可兌多少（2026 年約數）
+const FX  = { HKD: 7.82, MOP: 8.06, CNY: 6.86, TWD: 32.2, JPY: 156, SGD: 1.29, THB: 31.1, USD: 1 };
+const SYM = { HKD: 'HK$', MOP: 'MOP$', CNY: 'CN¥', TWD: 'NT$', JPY: 'JP¥', SGD: 'S$', THB: '฿', USD: 'US$' };
+// 月薪標杆（全部換算成美元）。w = [繁, 简, EN] 稱呼；src = [繁, 简, EN] 出處
+const LADDER = [
+  { id: 'in',    flag: '🇮🇳', usd: 21285 / 95.9,  w: ['印度人', '印度人', 'an Indian worker'], src: ['印度 PLFS 2025，受薪僱員平均月薪 ₹21,285', '印度 PLFS 2025，受薪雇员平均月薪 ₹21,285', 'India PLFS 2025, avg regular salaried pay ₹21,285'] },
+  { id: 'vn',    flag: '🇻🇳', usd: 9000000 / 26340, w: ['越南人', '越南人', 'a Vietnamese worker'], src: ['越南統計局 2026 Q1，平均月收入 900 萬盾', '越南统计局 2026 Q1，平均月收入 900 万盾', 'Vietnam NSO Q1 2026, avg monthly income ₫9.0m'] },
+  { id: 'ph',    flag: '🇵🇭', usd: 21544 / 62.8,  w: ['菲律賓人', '菲律宾人', 'a Filipino worker'], src: ['菲律賓統計署 2024，平均月薪 ₱21,544', '菲律宾统计署 2024，平均月薪 ₱21,544', 'PSA 2024, avg monthly wage ₱21,544'] },
+  { id: 'th',    flag: '🇹🇭', usd: 15972 / 31.1,  w: ['泰國人', '泰国人', 'a Thai worker'], src: ['泰國統計局 2025 Q3，平均月薪 ฿15,972', '泰国统计局 2025 Q3，平均月薪 ฿15,972', 'Thailand NSO Q3 2025, avg monthly wage ฿15,972'] },
+  { id: 'my',    flag: '🇲🇾', usd: 3803 / 4.23,   w: ['馬來西亞人', '马来西亚人', 'a Malaysian worker'], src: ['馬來西亞統計局 2025，平均月薪 RM3,803', '马来西亚统计局 2025，平均月薪 RM3,803', 'DOSM 2025, avg monthly wage RM3,803'] },
+  { id: 'tw',    flag: '🇹🇼', usd: 47884 / 32.2,  w: ['台灣人', '台湾人', 'a Taiwanese worker'], src: ['主計總處 2025，平均經常性薪資 NT$47,884', '主计总处 2025，平均经常性薪资 NT$47,884', 'DGBAS 2025, avg regular earnings NT$47,884'] },
+  { id: 'cn',    flag: '🇨🇳', usd: 129441 / 12 / 6.86, w: ['中國城鎮職工', '中国城镇职工', 'an urban Chinese worker'], src: ['國家統計局 2025，城鎮非私營單位平均工資 ¥129,441 ÷ 12', '国家统计局 2025，城镇非私营单位平均工资 ¥129,441 ÷ 12', 'NBS 2025, urban non-private avg wage ¥129,441 ÷ 12'] },
+  { id: 'pl',    flag: '🇵🇱', usd: 1918, w: ['波蘭人', '波兰人', 'a Polish worker'], src: ['OECD 2024，平均月薪 US$1,918', 'OECD 2024，平均月薪 US$1,918', 'OECD 2024, avg monthly wage US$1,918'] },
+  { id: 'jp',    flag: '🇯🇵', usd: 340600 / 156,  w: ['日本人', '日本人', 'a Japanese worker'], src: ['厚生勞動省 2025，一般勞工平均月薪 ¥340,600', '厚生劳动省 2025，一般劳动者平均月薪 ¥340,600', 'MHLW 2025, avg monthly wage ¥340,600'] },
+  { id: 'hk',    flag: '🇭🇰', usd: 21200 / 7.82,  w: ['香港打工仔', '香港打工人', 'a typical Hong Kong worker'], src: ['統計處 2025，每月工資中位數 HK$21,200', '统计处 2025，每月工资中位数 HK$21,200', 'C&SD 2025, median monthly wage HK$21,200'] },
+  { id: 'kr',    flag: '🇰🇷', usd: 4205000 / 1422, w: ['韓國人', '韩国人', 'a Korean worker'], src: ['韓國僱傭勞動部 2025，平均月薪 ₩4,205,000', '韩国雇佣劳动部 2025，平均月薪 ₩4,205,000', 'MOEL Korea 2025, avg monthly wage ₩4,205,000'] },
+  { id: 'es',    flag: '🇪🇸', usd: 2979, w: ['西班牙人', '西班牙人', 'a Spanish worker'], src: ['OECD 2024，平均月薪 US$2,979', 'OECD 2024，平均月薪 US$2,979', 'OECD 2024, avg monthly wage US$2,979'] },
+  { id: 'fr',    flag: '🇫🇷', usd: 4049, w: ['法國人', '法国人', 'a French worker'], src: ['OECD 2024，平均月薪 US$4,049', 'OECD 2024，平均月薪 US$4,049', 'OECD 2024, avg monthly wage US$4,049'] },
+  { id: 'sg',    flag: '🇸🇬', usd: 5775 / 1.29,   w: ['新加坡人', '新加坡人', 'a Singaporean worker'], src: ['新加坡人力部 2025，全職月收入中位數 S$5,775', '新加坡人力部 2025，全职月收入中位数 S$5,775', 'MOM 2025, median monthly income S$5,775'] },
+  { id: 'de',    flag: '🇩🇪', usd: 4531, w: ['德國人', '德国人', 'a German worker'], src: ['OECD 2024，平均月薪 US$4,531', 'OECD 2024，平均月薪 US$4,531', 'OECD 2024, avg monthly wage US$4,531'] },
+  { id: 'gb',    flag: '🇬🇧', usd: 4772, w: ['英國人', '英国人', 'a British worker'], src: ['OECD 2024，平均月薪 US$4,772', 'OECD 2024，平均月薪 US$4,772', 'OECD 2024, avg monthly wage US$4,772'] },
+  { id: 'us',    flag: '🇺🇸', usd: 1232 * 52 / 12, w: ['美國人', '美国人', 'a typical American worker'], src: ['美國勞工統計局 2026 Q3，全職週薪中位數 $1,232 × 52 ÷ 12', '美国劳工统计局 2026 Q3，全职周薪中位数 $1,232 × 52 ÷ 12', 'BLS Q3 2026, median weekly pay $1,232 × 52 ÷ 12'] },
+  { id: 'no',    flag: '🇳🇴', usd: 5578, w: ['挪威人', '挪威人', 'a Norwegian worker'], src: ['OECD 2024，平均月薪 US$5,578', 'OECD 2024，平均月薪 US$5,578', 'OECD 2024, avg monthly wage US$5,578'] },
+  { id: 'au',    flag: '🇦🇺', usd: 2083.7 * 52 / 12 * 0.694, w: ['澳洲人', '澳大利亚人', 'an Australian worker'], src: ['澳洲統計局 2026 年 5 月，全職平均週薪 A$2,083.70 × 52 ÷ 12', '澳大利亚统计局 2026 年 5 月，全职平均周薪 A$2,083.70 × 52 ÷ 12', 'ABS May 2026, avg full-time weekly pay A$2,083.70 × 52 ÷ 12'] },
+  { id: 'dk',    flag: '🇩🇰', usd: 6361, w: ['丹麥人', '丹麦人', 'a Danish worker'], src: ['OECD 2024，平均月薪 US$6,361', 'OECD 2024，平均月薪 US$6,361', 'OECD 2024, avg monthly wage US$6,361'] },
+  { id: 'hk10',  flag: '🇭🇰', usd: 51300 / 7.82,  w: ['香港收入最高一成的打工仔', '香港收入最高一成的打工人', 'a top-10% earner in Hong Kong'], src: ['統計處 2025，每月工資第 90 百分位 HK$51,300', '统计处 2025，每月工资第 90 百分位 HK$51,300', 'C&SD 2025, 90th percentile monthly wage HK$51,300'] },
+  { id: 'is',    flag: '🇮🇸', usd: 7132, w: ['冰島人', '冰岛人', 'an Icelandic worker'], src: ['OECD 2024，平均月薪 US$7,132', 'OECD 2024，平均月薪 US$7,132', 'OECD 2024, avg monthly wage US$7,132'] },
+  { id: 'lu',    flag: '🇱🇺', usd: 7536, w: ['盧森堡人', '卢森堡人', 'a Luxembourg worker'], src: ['OECD 2024，平均月薪 US$7,536', 'OECD 2024，平均月薪 US$7,536', 'OECD 2024, avg monthly wage US$7,536'] },
+  { id: 'ch',    flag: '🇨🇭', usd: 8674, w: ['瑞士人', '瑞士人', 'a Swiss worker'], src: ['瑞士聯邦統計局 2024，月薪中位數 CHF 7,024', '瑞士联邦统计局 2024，月薪中位数 CHF 7,024', 'Swiss FSO 2024, median monthly wage CHF 7,024'] },
+  { id: 'us10',  flag: '🇺🇸', usd: 4985 * 52 / 12, w: ['美國收入最高一成的男士', '美国收入最高一成的男性', 'a top-10% male earner in the US'], src: ['美國勞工統計局 2026 Q3，男性週薪第 90 百分位 $4,985', '美国劳工统计局 2026 Q3，男性周薪第 90 百分位 $4,985', 'BLS Q3 2026, 90th percentile male weekly pay $4,985'] },
+  { id: 'usba',  flag: '🇺🇸', usd: 1752 * 52 / 12, w: ['美國大學畢業生', '美国大学毕业生', 'an American graduate'], src: ['美國勞工統計局 2026 Q3，學士或以上週薪中位數 $1,752', '美国劳工统计局 2026 Q3，学士或以上周薪中位数 $1,752', 'BLS Q3 2026, median weekly pay with bachelor\'s+ $1,752'] },
+  { id: 'aumin', flag: '🇦🇺', usd: 3224.2 * 52 / 12 * 0.694, w: ['澳洲礦工', '澳大利亚矿工', 'an Australian mining worker'], src: ['澳洲統計局 2026 年 5 月，礦業全職平均週薪 A$3,224.20', '澳大利亚统计局 2026 年 5 月，矿业全职平均周薪 A$3,224.20', 'ABS May 2026, mining avg full-time weekly pay A$3,224.20'] },
+  { id: 'chmgr', flag: '🇨🇭', usd: 10208 * 1.235, w: ['瑞士經理', '瑞士经理', 'a Swiss manager'], src: ['瑞士聯邦統計局 2024，管理層月薪中位數 CHF 10,208', '瑞士联邦统计局 2024，管理层月薪中位数 CHF 10,208', 'Swiss FSO 2024, managers\' median monthly wage CHF 10,208'] },
+  { id: 'ukpm',  flag: '🇬🇧', usd: 230000 / 12, w: ['英國首相', '英国首相', 'the UK prime minister'], src: ['英國首相年薪約 $230,000', '英国首相年薪约 $230,000', 'UK prime minister pay about $230,000/yr'] },
+  { id: 'chpres',flag: '🇨🇭', usd: 606000 / 12, w: ['瑞士聯邦主席', '瑞士联邦主席', 'the Swiss president'], src: ['瑞士聯邦主席年薪約 $606,000', '瑞士联邦主席年薪约 $606,000', 'Swiss president pay about $606,000/yr'] },
+  { id: 'gs',    flag: '🇺🇸', usd: 119000000 / 12, w: ['高盛 CEO', '高盛 CEO', "Goldman Sachs' CEO"], src: ['美聯社 2025，高盛 CEO 薪酬約 $119M', '美联社 2025，高盛 CEO 薪酬约 $119M', 'AP 2025, Goldman Sachs CEO pay about $119m'] },
+  { id: 'potus', flag: '🇺🇸', usd: 400000 / 12,   w: ['美國總統', '美国总统', 'the US president'], src: ['美國總統法定年薪 $400,000', '美国总统法定年薪 $400,000', 'US president statutory salary $400,000/yr'] },
+  { id: 'hkce',  flag: '🇭🇰', usd: 469495 / 7.82, w: ['香港特首', '香港特首', "Hong Kong's Chief Executive"], src: ['香港行政長官月薪 HK$469,495', '香港行政长官月薪 HK$469,495', 'HK Chief Executive monthly pay HK$469,495'] },
+  { id: 'sgmin', flag: '🇸🇬', usd: 1800000 / 12 / 1.29, w: ['新加坡部長', '新加坡部长', 'a Singapore minister'], src: ['新加坡初級部長基準年薪 S$1.8M（2026 年 10 月起）', '新加坡初级部长基准年薪 S$1.8M（2026 年 10 月起）', 'Singapore MR4 minister benchmark S$1.8m/yr (from Oct 2026)'] },
+  { id: 'sgpm',  flag: '🇸🇬', usd: 3600000 / 12 / 1.29, w: ['新加坡總理', '新加坡总理', "Singapore's prime minister"], src: ['新加坡總理基準年薪 S$3.6M（2026 年 10 月起）', '新加坡总理基准年薪 S$3.6M（2026 年 10 月起）', 'Singapore PM benchmark S$3.6m/yr (from Oct 2026)'] },
+  { id: 'ceo',   flag: '🇺🇸', usd: 17700000 / 12, w: ['美國大企業 CEO', '美国大企业 CEO', 'a typical S&P 500 CEO'], src: ['美聯社 / Equilar 2025，標普 500 CEO 薪酬中位數 $17.7M', '美联社 / Equilar 2025，标普 500 CEO 薪酬中位数 $17.7M', 'AP / Equilar 2025, median S&P 500 CEO pay $17.7m'] }
+].sort((a, b) => a.usd - b.usd);
+// 用戶貨幣對應的「家鄉」標杆，在範圍內會優先放上進度條
+const HOME = { HKD: 'hk', MOP: 'hk', CNY: 'cn', TWD: 'tw', JPY: 'jp', SGD: 'sg', THB: 'th', USD: 'us' };
+const LI = { 'zh-Hant': 0, 'zh-TW': 0, 'zh-Hans': 1, en: 2 };
+const MS_PER_MONTH = 30.4375 * 24 * 3600 * 1000; // 平均每月（365.25 ÷ 12 日）
+const FRAME_MS = 33;                               // 約每秒 30 次
+const DECIMALS = 4;
+
+const I18N = {
+  'zh-Hant': {
+    tag: '港', html: 'zh-HK', sec: n => `${n} 秒`, tapHint: '撳一下換一句', focus: '專注', hide: '隱藏月薪', show: '顯示月薪', title: '跳錶', salary: '月薪', start: '開始', pause: '暫停', reset: '歸零', resetAria: '長按歸零',
+    running: '計時中', paused: '已暫停',
+    lblIdle: '撳「開始」，睇下你每秒袋幾多', lblRun: '由你撳「開始」到而家，已經袋咗', lblPause: '停咗喇，暫時袋咗', perMin: '每分鐘', perHour: '每小時', footer: '資料只存在你的瀏覽器',
+    nextIn: (d, f, n) => `再過 <span class="amt">${d}</span>，就賺夠 ${f} ${n}一個月的薪水`,
+    reached: (day, f, n) => `本月第 ${day} 日，你已賺夠 ${f} ${n}一整個月的薪水`,
+    multiple: (x, f, n) => `你一個月的薪水，等於 ${f} ${n} <span class="amt">${x}</span> 個月`,
+    below: (f, n, p) => `本月可以賺到 ${f} ${n}月薪的 <span class="amt">${p}%</span>`,
+    month: a => `本月已賺 <span class="amt">${a}</span>`, srcNote: '部分為平均數、部分為中位數；匯率和物價（菠蘿油、珍奶、iPhone 等）為 2026 年約數，僅供參考。點一下進度條上面那句，可以換另一句。',
+    noSalary: '輸入月薪，看看你這個月能走多遠',
+    dur: (d, h, m) => d ? `${d} 日 ${h} 小時` : h ? `${h} 小時 ${m} 分鐘` : `${m} 分鐘`,
+    exit: '輕按任何位置返回', display: '只顯示數字',
+  },
+  'zh-Hans': {
+    tag: '简', html: 'zh-CN', sec: n => `${n} 秒`, tapHint: '点一下换一句', focus: '专注', hide: '隐藏月薪', show: '显示月薪', title: '跳表', salary: '月薪', start: '开始', pause: '暂停', reset: '归零', resetAria: '长按归零',
+    running: '计时中', paused: '已暂停',
+    lblIdle: '点「开始」，看看你每秒到账多少', lblRun: '从你点下「开始」起，已到账', lblPause: '暂停了，目前已到账', perMin: '每分钟', perHour: '每小时', footer: '数据只保存在你的浏览器',
+    nextIn: (d, f, n) => `再过 <span class="amt">${d}</span>，就赚够 ${f} ${n}一个月的工资`,
+    reached: (day, f, n) => `本月第 ${day} 天，你已赚够 ${f} ${n}一整个月的工资`,
+    multiple: (x, f, n) => `你一个月的工资，等于 ${f} ${n} <span class="amt">${x}</span> 个月`,
+    below: (f, n, p) => `本月可以赚到 ${f} ${n}月薪的 <span class="amt">${p}%</span>`,
+    month: a => `本月已赚 <span class="amt">${a}</span>`, srcNote: '部分为平均数、部分为中位数；汇率和物价（菠萝油、珍奶、iPhone 等）为 2026 年约数，仅供参考。点一下进度条上面那句，可以换另一句。',
+    noSalary: '输入月薪，看看你这个月能走多远',
+    dur: (d, h, m) => d ? `${d} 天 ${h} 小时` : h ? `${h} 小时 ${m} 分钟` : `${m} 分钟`,
+    exit: '轻按任意位置返回', display: '只显示数字',
+  },
+  en: {
+    tag: 'EN', html: 'en', sec: n => `${n}s`, tapHint: 'Tap for another one', focus: 'Focus', hide: 'Hide salary', show: 'Show salary', title: 'Salary meter', salary: 'Monthly salary', start: 'Start', pause: 'Pause', reset: 'Reset', resetAria: 'Hold to reset',
+    running: 'Running', paused: 'Paused',
+    lblIdle: 'Hit Start and watch the money roll in', lblRun: "Since you hit Start, you've pocketed", lblPause: 'Paused. Pocketed so far', perMin: 'Per min', perHour: 'Per hour', footer: 'Your data stays in this browser',
+    nextIn: (d, f, n) => `<span class="amt">${d}</span> until you've earned a month's pay of ${n} ${f}`,
+    reached: (day, f, n) => `Day ${day}: you've already earned a full month's pay of ${n} ${f}`,
+    multiple: (x, f, n) => `Your month equals <span class="amt">${x}</span> months' pay of ${n} ${f}`,
+    below: (f, n, p) => `This month you'll earn <span class="amt">${p}%</span> of the monthly pay of ${n} ${f}`,
+    month: a => `Earned this month <span class="amt">${a}</span>`, srcNote: 'Some figures are averages, some medians. Exchange rates and prices (buns, bubble tea, iPhones…) are 2026 approximations. Tap the line above the bar for another comparison.',
+    noSalary: 'Enter your salary to see how far your month goes',
+    dur: (d, h, m) => d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`,
+    exit: 'Tap anywhere to go back', display: 'Number only',
+  }
+};
+// 台灣版：沿用繁體，換成台灣用語
+I18N['zh-TW'] = Object.assign({}, I18N['zh-Hant'], {
+  tag: '台', html: 'zh-TW', tapHint: '點一下換一句', footer: '資料只存在你的瀏覽器裡',
+  lblIdle: '按下「開始」，看看你每秒入袋多少', lblRun: '從你按下「開始」到現在，已經默默入袋', lblPause: '先暫停一下，目前已入袋',
+  nextIn: (d, f, n) => `再過 <span class="amt">${d}</span>，就賺到 ${f} ${n}一個月的薪水`,
+  reached: (day, f, n) => `本月第 ${day} 天，你已賺到 ${f} ${n}一整個月的薪水`,
+  multiple: (x, f, n) => `你一個月的薪水，等於 ${f} ${n} <span class="amt">${x}</span> 個月`,
+  below: (f, n, p) => `本月可以賺到 ${f} ${n}月薪的 <span class="amt">${p}%</span>`,
+  noSalary: '輸入月薪，看看你這個月能走多遠',
+  dur: (d, h, m) => d ? `${d} 天 ${h} 小時` : h ? `${h} 小時 ${m} 分鐘` : `${m} 分鐘`,
+  exit: '輕觸任意處返回'
+});
+const LANGS = ['zh-Hant', 'zh-TW', 'zh-Hans', 'en'];
+
+/* ================= 狀態 ================= */
+const STORAGE_KEY = 'salary_meter_v5';
+// 金額一律以美元儲存，顯示時才換算，切換貨幣不會跳數
+let state = {
+  salaryUSD: 20000 / FX.HKD,
+  currency: 'HKD',
+  lang: 'zh-Hant',
+  running: false,
+  hidePay: false,    // 隱藏月薪（防偷看）
+  bankedUSD: 0,      // 上一段計時之前已累積的金額
+  segStart: null     // 本段計時開始的真實時間（Date.now）
+};
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) Object.assign(state, JSON.parse(raw));
+  } catch (e) {}
+  if (!FX[state.currency]) state.currency = 'HKD';
+  if (!I18N[state.lang]) state.lang = 'zh-Hant';
+  if (!(state.salaryUSD >= 0)) state.salaryUSD = 0;
+  if (!(state.bankedUSD >= 0)) state.bankedUSD = 0;
+}
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+
+const rateUSDperMs = () => state.salaryUSD / MS_PER_MONTH;
+function totalUSD(now = Date.now()) {
+  let t = state.bankedUSD;
+  if (state.running && state.segStart) t += Math.max(0, now - state.segStart) * rateUSDperMs();
+  return t;
+}
+// 把本段累積的金額存起來，重新開始一段（改月薪、暫停時用）
+function bank() {
+  const now = Date.now();
+  state.bankedUSD = totalUSD(now);
+  state.segStart = state.running ? now : null;
+}
+
+/* ================= DOM ================= */
+const $ = id => document.getElementById(id);
+const salaryInput = $('salaryInput'), curSelect = $('curSelect');
+const meter = $('meter'), meterBox = $('meterBox'), mSym = $('mSym'), mInt = $('mInt'), mDec = $('mDec');
+const startBtn = $('startBtn'), resetBtn = $('resetBtn'), statusBadge = $('statusBadge'), langBtn = $('langBtn');
+const nextText = $('nextText'), barFill = $('barFill'), sourcesEl = $('sources'), infoBtn = $('infoBtn');
+const runner = $('runner'), ticksEl = $('ticks'), markersEl = $('markers'), monthEarned = $('monthEarned');
+const hint = $('hint'), container = $('container');
+
+Object.keys(FX).forEach(c => {
+  const o = document.createElement('option');
+  o.value = c; o.textContent = c;
+  curSelect.appendChild(o);
+});
+
+const fx = () => FX[state.currency];
+const T = () => I18N[state.lang];
+
+function fmtMoney(usd, decimals) {
+  const v = usd * fx();
+  const [i, d] = v.toFixed(decimals).split('.');
+  return { int: i.replace(/\B(?=(\d{3})+(?!\d))/g, ','), dec: d ? '.' + d : '' };
+}
+
+/* ================= 數字自動縮放 ================= */
+let lastLen = -1;
+function fitMeter() {
+  const display = document.body.classList.contains('display');
+  const boxW = meterBox.clientWidth - (display ? 0 : 28);
+  const portrait = window.innerHeight > window.innerWidth;
+  document.body.classList.toggle('portrait', portrait);
+  const maxPx = display ? (portrait ? window.innerHeight * 0.24 : Math.min(window.innerHeight * 0.42, 400)) : Math.min(140, window.innerHeight * 0.16);
+  meter.style.fontSize = '100px';
+  const w = meter.scrollWidth || 1;
+  meter.style.fontSize = Math.max(18, Math.min(maxPx, 100 * boxW / w * 0.98)) + 'px';
+}
+
+/* ================= 介面 ================= */
+function renderStatic() {
+  const t = T();
+  document.documentElement.lang = t.html;
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t[el.dataset.i18n]; });
+  langBtn.textContent = t.tag;
+  $('focusBtn').textContent = t.focus;
+  nextText.title = t.tapHint;
+  resetBtn.setAttribute('aria-label', t.resetAria);
+  meterBox.setAttribute('aria-label', t.display);
+  curSelect.value = state.currency;
+  mSym.textContent = SYM[state.currency];
+  ladderKey = '';
+  const li = LI[state.lang];
+  sourcesEl.innerHTML = LADDER.map(m => `<li>${m.flag} ${m.src[li]}</li>`).join('') + `<li>${t.srcNote}</li>`;
+  renderStatus();
+  renderRates();
+  lastLen = -1;
+  renderMeter(true);
+  renderLadder();
+  renderHide();
+}
+function renderStatus() {
+  const t = T();
+  startBtn.textContent = state.running ? t.pause : t.start;
+  startBtn.classList.toggle('btn-start', !state.running);
+  statusBadge.textContent = state.running ? t.running : t.paused;
+  statusBadge.classList.toggle('running', state.running);
+  $('meterLabel').textContent = state.running ? t.lblRun : (state.bankedUSD > 0 ? t.lblPause : t.lblIdle);
+}
+function renderRates() {
+  const perMs = rateUSDperMs() * fx();
+  $('perMin').textContent = state.hidePay ? MASK : (perMs * 60000).toFixed(2);
+  $('perHour').textContent = state.hidePay ? MASK : (perMs * 3600000).toFixed(2);
+}
+function syncInput() {
+  const v = state.salaryUSD * fx();
+  salaryInput.value = v ? Math.round(v) : '';
+}
+
+let lastTitle = 0, ladderKey = '';
+
+// 本月（每月 1 號 00:00 至下月 1 號）
+function monthBounds(now) {
+  const d = new Date(now);
+  return [new Date(d.getFullYear(), d.getMonth(), 1).getTime(), new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime()];
+}
+function fmtDur(ms) {
+  const mins = Math.max(1, Math.ceil(ms / 60000));
+  return T().dur(Math.floor(mins / 1440), Math.floor(mins % 1440 / 60), mins % 60);
+}
+
+// 進度條按日曆計算：本月過了幾多，就賺了月薪的幾多
+// 各地放在「它的月薪 ÷ 你的月薪」的位置；超過你月薪的地方本月到不了
+function buildMarkers(inside) {
+  const t = T();
+  ticksEl.innerHTML = ''; markersEl.innerHTML = '';
+  // 太近的國旗併成一組，並排放在同一行，不會跌到下一行
+  // 按實際寬度判斷：兩組國旗會碰到就合併
+  const W = markersEl.clientWidth || 300, FLAG = 22 / W, GAP = 4 / W;
+  const center = g => g.reduce((a, m) => a + m.pos, 0) / g.length;
+  const groups = [];
+  inside.forEach(m => {
+    const tk = document.createElement('div');
+    tk.className = 'tick'; tk.style.left = m.pos * 100 + '%';
+    ticksEl.appendChild(tk);
+    m.tk = tk;
+    groups.push([m]);
+    while (groups.length > 1) {
+      const b = groups[groups.length - 1], a = groups[groups.length - 2];
+      const aRight = center(a) + a.length * FLAG / 2, bLeft = center(b) - b.length * FLAG / 2;
+      if (bLeft - aRight >= GAP) break;
+      groups.splice(groups.length - 2, 2, a.concat(b));
+    }
+  });
+  groups.forEach(g => {
+    const c = center(g);
+    const mk = document.createElement('div');
+    mk.className = 'marker';
+    mk.style.left = c * 100 + '%';
+    mk.style.transform = 'translateX(-50%)';
+    g.forEach(m => {
+      const f = document.createElement('span');
+      f.className = 'flag';
+      f.textContent = m.flag;
+      f.title = m.w[LI[state.lang]];
+      f.setAttribute('aria-label', m.w[LI[state.lang]]);
+      mk.appendChild(f);
+      m.mk = f;
+    });
+    markersEl.appendChild(mk);
+  });
+  markersEl.style.height = inside.length ? '24px' : '0px';
+}
+
+// 按月薪挑選 6–7 個平均分布的站：太低（< 5%）或超過自己月薪的不放
+const TARGETS = [0.12, 0.26, 0.40, 0.54, 0.68, 0.82, 0.95];
+function pickStops(sal) {
+  const cands = LADDER.map(m => Object.assign({}, m, { pos: m.usd / sal })).filter(m => m.pos >= 0.05 && m.pos <= 1);
+  const picked = [];
+  const ok = (m, ignore) => picked.every(p => p === ignore || Math.abs(p.pos - m.pos) >= 0.07);
+  TARGETS.forEach(t => {
+    let best = null;
+    cands.forEach(m => {
+      if (picked.includes(m) || !ok(m) || Math.abs(m.pos - t) > 0.08) return;
+      if (!best || Math.abs(m.pos - t) < Math.abs(best.pos - t)) best = m;
+    });
+    if (best) picked.push(best);
+  });
+  // 家鄉標杆在範圍內就一定放上去，替換最接近的一個
+  const home = cands.find(m => m.id === HOME[state.currency]);
+  if (home && !picked.includes(home)) {
+    const clash = picked.filter(p => Math.abs(p.pos - home.pos) < 0.07).sort((x, y) => Math.abs(x.pos - home.pos) - Math.abs(y.pos - home.pos))[0];
+    if (clash) picked.splice(picked.indexOf(clash), 1);
+    if (ok(home)) picked.push(home);
+  }
+  return picked.sort((x, y) => x.pos - y.pos);
+}
+
+let ladderInside = [];
+function renderLadder() {
+  const t = T(), li = LI[state.lang];
+  const now = Date.now();
+  const [s0, s1] = monthBounds(now);
+  const len = s1 - s0, f = (now - s0) / len;
+  barFill.style.width = runner.style.left = (f * 100).toFixed(3) + '%';
+
+  const sal = state.salaryUSD;
+  const m$ = fmtMoney(sal * f, 2);
+  monthEarned.innerHTML = sal > 0 ? t.month(SYM[state.currency] + (state.hidePay ? MASK : m$.int + m$.dec)) : '';
+
+  const key = state.lang + '|' + state.currency + '|' + sal.toFixed(6);
+  if (key !== ladderKey) {
+    ladderKey = key;
+    ladderInside = sal > 0 ? pickStops(sal) : [];
+    buildMarkers(ladderInside);
+  }
+  if (!(sal > 0)) { nextText.textContent = t.noSalary; return; }
+
+  ladderInside.forEach(m => {
+    const on = f >= m.pos;
+    m.tk.classList.toggle('unlocked', on);
+    m.mk.classList.toggle('unlocked', on);
+  });
+
+  nextText.innerHTML = currentLine(() => {
+    const next = ladderInside.find(m => m.pos > f);
+    if (next) {
+      return t.nextIn(fmtDur((next.pos - f) * len), next.flag, next.w[li]);
+    } else if (ladderInside.length) {
+      const last = ladderInside[ladderInside.length - 1];
+      if (!LADDER.some(m => m.usd > sal)) {
+        return t.multiple((sal / last.usd).toFixed(1), last.flag, last.w[li]);
+      } else {
+        const day = new Date(s0 + last.pos * len).getDate();
+        return t.reached(day, last.flag, last.w[li]);
+      }
+    } else {
+      const m = LADDER[0];
+      return t.below(m.flag, m.w[li], Math.round(sal / m.usd * 100));
+    }
+    return '';
+  });
+}
+
+function renderMeter(force) {
+  const usd = totalUSD();
+  const f = fmtMoney(usd, DECIMALS);
+  if (force || mInt.textContent !== f.int) mInt.textContent = f.int;
+  mDec.textContent = f.dec;
+  const len = f.int.length;
+  if (len !== lastLen) { lastLen = len; fitMeter(); }
+  // 天梯和分頁標題不用每幀更新
+  const now = Date.now();
+  if (now - lastTitle > 1000) { lastTitle = now; document.title = `${SYM[state.currency]}${f.int} · ${T().title}`; }
+}
+
+/* ================= 輪換句子庫（每小時換一句，點一下也可以換） ================= */
+// 只用職位做反向比較，不做國家對國家，避免拉仇恨
+const ROLES = ['ukpm', 'potus', 'chpres', 'hkce', 'sgmin', 'sgpm', 'ceo', 'gs'];
+const COUNTRIES = ['in', 'vn', 'ph', 'th', 'my', 'tw', 'cn', 'pl', 'jp', 'hk', 'kr', 'es', 'fr', 'sg', 'de', 'gb', 'us', 'no', 'au', 'dk', 'is', 'lu', 'ch'];
+const LK = { 'zh-Hant': 'hk', 'zh-TW': 'tw', 'zh-Hans': 'cn', en: 'en' };
+
+// 物價籃（約數，2026 年）。one = 一件；many = 量詞＋名稱
+const BASKETS = {
+  HK: { cur: 'HKD', items: [
+    { p: 16,    one: { hk: '一個菠蘿油', tw: '一個菠蘿油', cn: '一个菠萝油', en: 'a pineapple bun' }, many: { hk: '個菠蘿油', tw: '個菠蘿油', cn: '个菠萝油', en: 'pineapple buns' } },
+    { p: 22,    one: { hk: '一杯凍檸茶', tw: '一杯港式凍檸茶', cn: '一杯冻柠茶', en: 'an iced lemon tea' }, many: { hk: '杯凍檸茶', tw: '杯港式凍檸茶', cn: '杯冻柠茶', en: 'iced lemon teas' } },
+    { p: 12,    one: { hk: '一程港鐵', tw: '一趟港鐵', cn: '一程港铁', en: 'an MTR ride' }, many: { hk: '程港鐵', tw: '趟港鐵', cn: '程港铁', en: 'MTR rides' } },
+    { p: 50,    one: { hk: '一碗車仔麵', tw: '一碗車仔麵', cn: '一碗车仔面', en: 'a bowl of cart noodles' }, many: { hk: '碗車仔麵', tw: '碗車仔麵', cn: '碗车仔面', en: 'bowls of cart noodles' } },
+    { p: 60,    one: { hk: '一個茶記午餐', tw: '一份茶餐廳午餐', cn: '一份茶餐厅午餐', en: 'a cha chaan teng lunch' }, many: { hk: '個茶記午餐', tw: '份茶餐廳午餐', cn: '份茶餐厅午餐', en: 'cha chaan teng lunches' } },
+    { p: 110,   one: { hk: '一張戲飛', tw: '一張電影票', cn: '一张电影票', en: 'a movie ticket' }, many: { hk: '張戲飛', tw: '張電影票', cn: '张电影票', en: 'movie tickets' } },
+    { p: 3000,  one: { hk: '一張東京來回機票', tw: '一張東京來回機票', cn: '一张东京往返机票', en: 'a return flight to Tokyo' }, many: { hk: '張東京來回機票', tw: '張東京來回機票', cn: '张东京往返机票', en: 'return flights to Tokyo' } },
+    { p: 10499, one: { hk: '一部 iPhone 18 Pro', tw: '一支 iPhone 18 Pro', cn: '一部 iPhone 18 Pro', en: 'an iPhone 18 Pro' }, many: { hk: '部 iPhone 18 Pro', tw: '支 iPhone 18 Pro', cn: '部 iPhone 18 Pro', en: 'iPhone 18 Pros' } },
+    { p: 21999, one: { hk: '一部頂配 iPhone 18 Pro Max', tw: '一支頂規 iPhone 18 Pro Max', cn: '一部顶配 iPhone 18 Pro Max', en: 'a maxed-out iPhone 18 Pro Max' }, many: { hk: '部頂配 iPhone 18 Pro Max', tw: '支頂規 iPhone 18 Pro Max', cn: '部顶配 iPhone 18 Pro Max', en: 'maxed-out iPhone 18 Pro Maxes' } }
+  ] },
+  TW: { cur: 'TWD', items: [
+    { p: 30,    one: { hk: '一程台北捷運', tw: '一趟捷運', cn: '一程台北捷运', en: 'a Taipei MRT ride' }, many: { hk: '程台北捷運', tw: '趟捷運', cn: '程台北捷运', en: 'Taipei MRT rides' } },
+    { p: 75,    one: { hk: '一杯珍珠奶茶', tw: '一杯珍奶', cn: '一杯珍珠奶茶', en: 'a bubble tea' }, many: { hk: '杯珍珠奶茶', tw: '杯珍奶', cn: '杯珍珠奶茶', en: 'bubble teas' } },
+    { p: 78,    one: { hk: '一個巨無霸', tw: '一個大麥克', cn: '一个巨无霸', en: 'a Big Mac' }, many: { hk: '個巨無霸', tw: '個大麥克', cn: '个巨无霸', en: 'Big Macs' } },
+    { p: 100,   one: { hk: '一塊雞排', tw: '一塊雞排', cn: '一块鸡排', en: 'a fried chicken cutlet' }, many: { hk: '塊雞排', tw: '塊雞排', cn: '块鸡排', en: 'fried chicken cutlets' } },
+    { p: 120,   one: { hk: '一個便當', tw: '一個便當', cn: '一份便当', en: 'a bento box' }, many: { hk: '個便當', tw: '個便當', cn: '份便当', en: 'bento boxes' } },
+    { p: 350,   one: { hk: '一張戲飛', tw: '一張電影票', cn: '一张电影票', en: 'a movie ticket' }, many: { hk: '張戲飛', tw: '張電影票', cn: '张电影票', en: 'movie tickets' } },
+    { p: 12000, one: { hk: '一張東京來回機票', tw: '一張東京來回機票', cn: '一张东京往返机票', en: 'a return flight to Tokyo' }, many: { hk: '張東京來回機票', tw: '張東京來回機票', cn: '张东京往返机票', en: 'return flights to Tokyo' } },
+    { p: 44900, one: { hk: '一部 iPhone 18 Pro', tw: '一支 iPhone 18 Pro', cn: '一部 iPhone 18 Pro', en: 'an iPhone 18 Pro' }, many: { hk: '部 iPhone 18 Pro', tw: '支 iPhone 18 Pro', cn: '部 iPhone 18 Pro', en: 'iPhone 18 Pros' } },
+    { p: 93900, one: { hk: '一部頂配 iPhone 18 Pro Max', tw: '一支頂規 iPhone 18 Pro Max', cn: '一部顶配 iPhone 18 Pro Max', en: 'a maxed-out iPhone 18 Pro Max' }, many: { hk: '部頂配 iPhone 18 Pro Max', tw: '支頂規 iPhone 18 Pro Max', cn: '部顶配 iPhone 18 Pro Max', en: 'maxed-out iPhone 18 Pro Maxes' } }
+  ] }
+};
+const BASKET_FOR = { HKD: 'HK', MOP: 'HK', TWD: 'TW' };
+
+const H = 3600000;
+const amt = v => {
+  const x = Math.max(0, v);
+  const s = x >= 100 ? Math.round(x).toLocaleString('en-US') : x.toFixed(2);
+  return `<span class="amt">${SYM[state.currency]}${s}</span>`;
+};
+const num = n => `<span class="amt">${n >= 10 ? Math.floor(n).toLocaleString('en-US') : n.toFixed(1).replace(/\.0$/, '')}</span>`;
+const dur = ms => `<span class="amt">${ms < 60000 ? T().sec(Math.max(1, Math.round(ms / 1000))) : fmtDur(ms)}</span>`;
+
+function lineCtx() {
+  const now = Date.now(), d = new Date(now);
+  const [s0, s1] = monthBounds(now);
+  const len = s1 - s0, fx_ = fx();
+  const salC = state.salaryUSD * fx_;
+  const perMsC = rateUSDperMs() * fx_;
+  const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const dow = d.getDay();
+  const monday = midnight - ((dow + 6) % 7) * 24 * H;
+  const bk = BASKETS[BASKET_FOR[state.currency]];
+  const items = bk ? bk.items.map(it => Object.assign({}, it, { pc: it.p / FX[bk.cur] * fx_ })) : null;
+  return {
+    now, s0, len, f: (now - s0) / len, salC, perMsC, monthRate: salC / len,
+    monthC: salC * (now - s0) / len, todayC: perMsC * (now - midnight), weekC: perMsC * (now - monday),
+    sessionC: totalUSD(now) * fx_, hour: d.getHours(), dow, day: d.getDate(),
+    weekday: dow >= 1 && dow <= 5, items, hide: state.hidePay, L: LK[state.lang] || 'hk'
+  };
+}
+
+// 從物價籃揀一件：令數量落在 1–999 之間，最好 2–200
+function pickItem(c, amount, rnd) {
+  if (!c.items || !(amount > 0)) return null;
+  const fit = c.items.filter(it => { const n = amount / it.pc; return n >= 1 && n <= 999; });
+  if (!fit.length) return null;
+  const nice = fit.filter(it => { const n = amount / it.pc; return n >= 2 && n <= 200; });
+  const pool = nice.length ? nice : fit;
+  return pool[Math.floor(rnd() * pool.length)];
+}
+const roleById = id => LADDER.find(m => m.id === id);
+const who = (m, c) => { const n = m.w[LI[state.lang]]; return `${m.flag} ${n}${state.lang !== 'en' && /[A-Za-z0-9]$/.test(n) ? ' ' : ''}`; };
+
+const S = (hk, tw, cn, en) => ({ hk, tw, cn, en });
+
+const TPL = [
+  /* ---------- 物價換算 ---------- */
+  { id: 'pr_month', cat: 'price', basket: true,
+    choose: (c, r) => { const it = pickItem(c, c.monthC, r); return it && { it }; },
+    say: S((c, p) => `本月已經袋夠 ${num(c.monthC / p.it.pc)} ${p.it.many.hk}`,
+           (c, p) => `本月已經賺到 ${num(c.monthC / p.it.pc)} ${p.it.many.tw}`,
+           (c, p) => `本月已经赚够 ${num(c.monthC / p.it.pc)} ${p.it.many.cn}`,
+           (c, p) => `This month you've already earned ${num(c.monthC / p.it.pc)} ${p.it.many.en}`) },
+  { id: 'pr_today', cat: 'price', basket: true,
+    choose: (c, r) => { const it = pickItem(c, c.todayC, r); return it && { it }; },
+    say: S((c, p) => `今日由凌晨計到而家，已經賺夠 ${num(c.todayC / p.it.pc)} ${p.it.many.hk}`,
+           (c, p) => `今天從凌晨到現在，已經賺到 ${num(c.todayC / p.it.pc)} ${p.it.many.tw}`,
+           (c, p) => `今天从零点到现在，已经赚够 ${num(c.todayC / p.it.pc)} ${p.it.many.cn}`,
+           (c, p) => `Since midnight you've earned ${num(c.todayC / p.it.pc)} ${p.it.many.en}`) },
+  { id: 'pr_session', cat: 'price', basket: true, when: c => state.running,
+    choose: (c, r) => { const it = pickItem(c, c.sessionC, r); return it && { it }; },
+    say: S((c, p) => `由你撳「開始」到而家，已經夠買 ${num(c.sessionC / p.it.pc)} ${p.it.many.hk}`,
+           (c, p) => `從你按下「開始」到現在，已經夠買 ${num(c.sessionC / p.it.pc)} ${p.it.many.tw}`,
+           (c, p) => `从你点下「开始」到现在，已经够买 ${num(c.sessionC / p.it.pc)} ${p.it.many.cn}`,
+           (c, p) => `Since you hit Start, you've earned ${num(c.sessionC / p.it.pc)} ${p.it.many.en}`) },
+  { id: 'pr_rate', cat: 'price', basket: true,
+    choose: (c, r) => {
+      const fit = c.items.filter(it => { const ms = it.pc / c.perMsC; return ms >= 60000 && ms <= 5 * 24 * H; });
+      return fit.length ? { it: fit[Math.floor(r() * fit.length)] } : null;
+    },
+    say: S((c, p) => `你每 ${dur(p.it.pc / c.perMsC)}，就賺到${p.it.one.hk}`,
+           (c, p) => `你每 ${dur(p.it.pc / c.perMsC)}，就賺到${p.it.one.tw}`,
+           (c, p) => `你每 ${dur(p.it.pc / c.perMsC)}，就赚到${p.it.one.cn}`,
+           (c, p) => `Every ${dur(p.it.pc / c.perMsC)}, you earn ${p.it.one.en}`) },
+  { id: 'pr_next', cat: 'price', basket: true,
+    choose: (c, r) => {
+      const fit = c.items.filter(it => it.pc > c.monthC && it.pc <= c.salC);
+      return fit.length ? { it: fit[Math.floor(r() * fit.length)] } : null;
+    },
+    say: S((c, p) => p.it.pc > c.monthC ? `再過 ${dur((p.it.pc - c.monthC) / c.monthRate)}，本月就賺夠${p.it.one.hk}` : null,
+           (c, p) => p.it.pc > c.monthC ? `再過 ${dur((p.it.pc - c.monthC) / c.monthRate)}，本月就賺到${p.it.one.tw}` : null,
+           (c, p) => p.it.pc > c.monthC ? `再过 ${dur((p.it.pc - c.monthC) / c.monthRate)}，本月就赚够${p.it.one.cn}` : null,
+           (c, p) => p.it.pc > c.monthC ? `${dur((p.it.pc - c.monthC) / c.monthRate)} until this month pays for ${p.it.one.en}` : null) },
+
+  /* ---------- 反向比較（只用職位） ---------- */
+  { id: 'rv_month', cat: 'reverse',
+    choose: (c, r) => {
+      const fit = ROLES.map(roleById).filter(m => m.usd > state.salaryUSD * 1.3);
+      return fit.length ? { m: fit[Math.floor(r() * fit.length)] } : null;
+    },
+    say: S((c, p) => `${who(p.m)}只要 ${dur(state.salaryUSD / p.m.usd * MS_PER_MONTH)}，就賺到你成個月人工`,
+           (c, p) => `${who(p.m)}只要 ${dur(state.salaryUSD / p.m.usd * MS_PER_MONTH)}，就賺到你一整個月的薪水`,
+           (c, p) => `${who(p.m)}只要 ${dur(state.salaryUSD / p.m.usd * MS_PER_MONTH)}，就赚到你一整个月的工资`,
+           (c, p) => `${who(p.m)} earns your whole month in ${dur(state.salaryUSD / p.m.usd * MS_PER_MONTH)}`) },
+  { id: 'rv_day', cat: 'reverse',
+    choose: (c, r) => {
+      const fit = ROLES.map(roleById).filter(m => m.usd > state.salaryUSD * 3);
+      return fit.length ? { m: fit[Math.floor(r() * fit.length)] } : null;
+    },
+    say: S((c, p) => `你辛苦一整日嘅人工，${who(p.m)}只要 ${dur(state.salaryUSD / p.m.usd * 24 * H)} 就賺到`,
+           (c, p) => `你辛苦一整天，${who(p.m)}只要 ${dur(state.salaryUSD / p.m.usd * 24 * H)}`,
+           (c, p) => `你辛苦一整天，${who(p.m)}只要 ${dur(state.salaryUSD / p.m.usd * 24 * H)}`,
+           (c, p) => `Your whole day takes ${who(p.m)} just ${dur(state.salaryUSD / p.m.usd * 24 * H)}`) },
+  { id: 'rv_catch', cat: 'reverse',
+    choose: (c, r) => {
+      const fit = ROLES.map(roleById).filter(m => m.usd / state.salaryUSD >= 2);
+      return fit.length ? { m: fit[Math.floor(r() * fit.length)] } : null;
+    },
+    say: S((c, p) => `你要做 ${num(p.m.usd / state.salaryUSD)} 個月，先追得上${who(p.m)}一個月`,
+           (c, p) => `你要做 ${num(p.m.usd / state.salaryUSD)} 個月，才追得上${who(p.m)}一個月`,
+           (c, p) => `你要干 ${num(p.m.usd / state.salaryUSD)} 个月，才追得上${who(p.m)}一个月`,
+           (c, p) => `It takes you ${num(p.m.usd / state.salaryUSD)} months to match one month of ${who(p.m)}`) },
+
+  /* ---------- 進度 ---------- */
+  { id: 'pg_multi', cat: 'progress',
+    choose: (c, r) => {
+      const monthUSD = state.salaryUSD * c.f;
+      const fit = COUNTRIES.map(roleById).filter(m => { const n = monthUSD / m.usd; return n >= 1.2 && n <= 40; });
+      return fit.length ? { m: fit[Math.floor(r() * fit.length)] } : null;
+    },
+    say: S((c, p) => `本月已經賺夠 ${num(state.salaryUSD * c.f / p.m.usd)} 個${who(p.m)}一個月嘅人工`,
+           (c, p) => `本月已經賺到 ${num(state.salaryUSD * c.f / p.m.usd)} 個${who(p.m)}一個月的薪水`,
+           (c, p) => `本月已经赚够 ${num(state.salaryUSD * c.f / p.m.usd)} 个${who(p.m)}一个月的工资`,
+           (c, p) => `This month you've earned ${num(state.salaryUSD * c.f / p.m.usd)} months' pay of ${who(p.m)}`) },
+  { id: 'pg_pct', cat: 'progress', leak: true,
+    say: S(c => `今個月已經過咗 <span class="amt">${Math.floor(c.f * 100)}%</span>，袋咗 ${amt(c.monthC)}`,
+           c => `這個月已經過了 <span class="amt">${Math.floor(c.f * 100)}%</span>，入袋 ${amt(c.monthC)}`,
+           c => `这个月已经过了 <span class="amt">${Math.floor(c.f * 100)}%</span>，到账 ${amt(c.monthC)}`,
+           c => `<span class="amt">${Math.floor(c.f * 100)}%</span> of the month gone, ${amt(c.monthC)} pocketed`) },
+  { id: 'pg_today', cat: 'progress', leak: true,
+    say: S(c => `今日由凌晨計到而家，已經袋咗 ${amt(c.todayC)}`,
+           c => `今天從凌晨到現在，已經入袋 ${amt(c.todayC)}`,
+           c => `今天从零点到现在，已经到账 ${amt(c.todayC)}`,
+           c => `Since midnight you've pocketed ${amt(c.todayC)}`) },
+
+  /* ---------- 返工摸魚（平日 9–18 點） ---------- */
+  { id: 'sk_meet', cat: 'slack', leak: true, when: c => c.weekday && c.hour >= 9 && c.hour < 18,
+    say: S(c => `開一個 1 個鐘嘅會，都值 ${amt(c.perMsC * H)}`,
+           c => `開一場 1 小時的會，價值 ${amt(c.perMsC * H)}`,
+           c => `开一场 1 小时的会，价值 ${amt(c.perMsC * H)}`,
+           c => `A one-hour meeting is worth ${amt(c.perMsC * H)} to you`) },
+  { id: 'sk_toilet', cat: 'slack', leak: true, when: c => c.weekday && c.hour >= 9 && c.hour < 18,
+    say: S(c => `帶薪去一次 10 分鐘廁所 = ${amt(c.perMsC * H / 6)}`,
+           c => `帶薪上一次 10 分鐘廁所 = ${amt(c.perMsC * H / 6)}`,
+           c => `带薪上一次 10 分钟厕所 = ${amt(c.perMsC * H / 6)}`,
+           c => `A paid 10-minute toilet break = ${amt(c.perMsC * H / 6)}`) },
+  { id: 'sk_email', cat: 'slack', leak: true, when: c => c.weekday && c.hour >= 9 && c.hour < 18,
+    say: S(c => `寫一封 5 分鐘嘅 email，值 ${amt(c.perMsC * H / 12)}`,
+           c => `寫一封 5 分鐘的 email，價值 ${amt(c.perMsC * H / 12)}`,
+           c => `写一封 5 分钟的邮件，价值 ${amt(c.perMsC * H / 12)}`,
+           c => `A 5-minute email is worth ${amt(c.perMsC * H / 12)}`) },
+  { id: 'sk_phone', cat: 'slack', basket: true, when: c => c.weekday && c.hour >= 9 && c.hour < 18,
+    choose: (c, r) => { const it = pickItem(c, c.perMsC * H / 4, r); return it && { it }; },
+    say: S((c, p) => `碌 15 分鐘手機，都賺到 ${num(c.perMsC * H / 4 / p.it.pc)} ${p.it.many.hk}`,
+           (c, p) => `滑 15 分鐘手機，也賺到 ${num(c.perMsC * H / 4 / p.it.pc)} ${p.it.many.tw}`,
+           (c, p) => `刷 15 分钟手机，也赚到 ${num(c.perMsC * H / 4 / p.it.pc)} ${p.it.many.cn}`,
+           (c, p) => `15 minutes of scrolling still earns you ${num(c.perMsC * H / 4 / p.it.pc)} ${p.it.many.en}`) },
+
+  /* ---------- 夜晚（23–7 點） ---------- */
+  { id: 'nt_amt', cat: 'night', leak: true, when: c => c.hour >= 23 || c.hour < 7,
+    say: S(c => `瞓緊覺都照計錢，今晚瞓 8 個鐘，又袋 ${amt(c.perMsC * 8 * H)}`,
+           c => `睡覺也照樣算錢，今晚睡 8 小時，又入袋 ${amt(c.perMsC * 8 * H)}`,
+           c => `睡觉也照样算钱，今晚睡 8 小时，又到账 ${amt(c.perMsC * 8 * H)}`,
+           c => `Sleep 8 hours tonight and still pocket ${amt(c.perMsC * 8 * H)}`) },
+  { id: 'nt_item', cat: 'night', basket: true, when: c => c.hour >= 23 || c.hour < 7,
+    choose: (c, r) => { const it = pickItem(c, c.perMsC * 8 * H, r); return it && { it }; },
+    say: S((c, p) => `今晚瞓 8 個鐘，起身已經賺夠 ${num(c.perMsC * 8 * H / p.it.pc)} ${p.it.many.hk}`,
+           (c, p) => `今晚睡 8 小時，醒來已經賺到 ${num(c.perMsC * 8 * H / p.it.pc)} ${p.it.many.tw}`,
+           (c, p) => `今晚睡 8 小时，醒来已经赚够 ${num(c.perMsC * 8 * H / p.it.pc)} ${p.it.many.cn}`,
+           (c, p) => `Sleep 8 hours and wake up ${num(c.perMsC * 8 * H / p.it.pc)} ${p.it.many.en} richer`) },
+  { id: 'nt_calm', cat: 'night', when: c => c.hour >= 23 || c.hour < 7,
+    say: S(() => '夜喇，錢照入袋，安心瞓啦',
+           () => '很晚了，錢照樣入袋，安心睡吧',
+           () => '夜深了，钱照样到账，安心睡吧',
+           () => 'It\'s late. The money keeps coming. Go to sleep') },
+
+  /* ---------- 午飯（平日 12–14 點） ---------- */
+  { id: 'lu_amt', cat: 'lunch', leak: true, when: c => c.weekday && c.hour >= 12 && c.hour < 14,
+    say: S(c => `食個 1 個鐘嘅午飯，都袋咗 ${amt(c.perMsC * H)}`,
+           c => `吃個 1 小時的午餐，也入袋 ${amt(c.perMsC * H)}`,
+           c => `吃个 1 小时的午饭，也到账 ${amt(c.perMsC * H)}`,
+           c => `A one-hour lunch still pays you ${amt(c.perMsC * H)}`) },
+  { id: 'lu_item', cat: 'lunch', basket: true, when: c => c.weekday && c.hour >= 12 && c.hour < 14,
+    choose: (c, r) => { const it = pickItem(c, c.perMsC * H, r); return it && { it }; },
+    say: S((c, p) => `食個午飯嘅時間，已經賺返 ${num(c.perMsC * H / p.it.pc)} ${p.it.many.hk}`,
+           (c, p) => `吃個午餐的時間，已經賺回 ${num(c.perMsC * H / p.it.pc)} ${p.it.many.tw}`,
+           (c, p) => `吃个午饭的工夫，已经赚回 ${num(c.perMsC * H / p.it.pc)} ${p.it.many.cn}`,
+           (c, p) => `Your lunch hour earns back ${num(c.perMsC * H / p.it.pc)} ${p.it.many.en}`) },
+
+  /* ---------- 星期 ---------- */
+  { id: 'wk_fri', cat: 'week', leak: true, when: c => c.dow === 5 && c.hour >= 17,
+    say: S(c => `星期五喇！今個星期已經袋咗 ${amt(c.weekC)}`,
+           c => `星期五了！這週已經入袋 ${amt(c.weekC)}`,
+           c => `周五啦！这周已经到账 ${amt(c.weekC)}`,
+           c => `It's Friday! This week you've pocketed ${amt(c.weekC)}`) },
+  { id: 'wk_end', cat: 'week', leak: true, when: c => c.dow === 0 || c.dow === 6,
+    say: S(c => `週末乜都唔做，今日都袋咗 ${amt(c.todayC)}`,
+           c => `週末什麼都不做，今天也入袋 ${amt(c.todayC)}`,
+           c => `周末啥也不干，今天也到账 ${amt(c.todayC)}`,
+           c => `Doing nothing this weekend, still pocketed ${amt(c.todayC)} today`) },
+  { id: 'wk_endcalm', cat: 'week', when: c => c.dow === 0 || c.dow === 6,
+    say: S(() => '放假都照計錢，好好休息',
+           () => '放假也照樣算錢，好好休息',
+           () => '放假也照样算钱，好好休息',
+           () => 'Days off still count. Rest well') },
+  { id: 'wk_mon', cat: 'week', when: c => c.dow === 1 && c.hour < 12,
+    say: S(() => '新一個星期，錢已經開始入袋',
+           () => '新的一週，錢已經開始入袋',
+           () => '新的一周，钱已经开始到账',
+           () => 'New week. The money has already started rolling in') }
+];
+
+const BASE_CATS = ['ladder', 'price', 'reverse', 'progress', 'slack'];
+const WIN_CATS = ['night', 'lunch', 'week'];
+let lineShift = 0, lineCache = null;
+
+function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { return () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+function tplOk(t, c) {
+  if (t.leak && c.hide) return false;
+  if (t.basket && !c.items) return false;
+  if (t.when && !t.when(c)) return false;
+  return true;
+}
+function chooseLine(slot, c) {
+  const probe = rng(1);
+  const avail = cat => cat === 'ladder' || TPL.some(t => t.cat === cat && tplOk(t, c) && (!t.choose || t.choose(c, probe)));
+  const base = BASE_CATS.filter(avail), win = WIN_CATS.filter(avail);
+  const cat = (win.length && slot % 3 === 0) ? win[Math.floor(slot / 3) % win.length] : base[slot % base.length];
+  if (cat === 'ladder') return { cat };
+  const r = rng(hashStr(slot + cat));
+  const pool = TPL.filter(t => t.cat === cat && tplOk(t, c)).sort(() => r() - 0.5);
+  for (const t of pool) {
+    const pick = t.choose ? t.choose(c, r) : {};
+    if (pick) return { cat, t, pick };
+  }
+  return { cat: 'ladder' };
+}
+function currentLine(ladderHtml) {
+  if (!(state.salaryUSD > 0)) return T().noSalary;
+  const c = lineCtx();
+  const slot = Math.floor((c.now - new Date(c.now).getTimezoneOffset() * 60000) / H) + lineShift;
+  const key = [slot, state.currency, state.salaryUSD.toFixed(6), c.hide, state.running].join('|');
+  if (!lineCache || lineCache.key !== key) lineCache = Object.assign({ key }, chooseLine(slot, c));
+  if (!lineCache.t) return ladderHtml();
+  const out = lineCache.t.say[c.L](c, lineCache.pick);
+  return out || ladderHtml();
+}
+nextText.addEventListener('click', () => { lineShift++; lineCache = null; renderLadder(); });
+nextText.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); lineShift++; lineCache = null; renderLadder(); } });
+
+/* ================= 主迴圈（約每秒 30 次） ================= */
+let lastFrame = 0;
+function loop(ts) {
+  if (state.running && ts - lastFrame >= FRAME_MS) {
+    lastFrame = ts;
+    renderMeter(false);
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ================= 螢幕常亮 ================= */
+let wakeLock = null;
+async function requestWake() {
+  if (!state.running || document.visibilityState !== 'visible' || wakeLock) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch (e) { wakeLock = null; }
+}
+function releaseWake() { if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } }
+
+/* ================= 隱藏月薪 ================= */
+const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6A17.6 17.6 0 0 0 2 12s3.6 7 10 7a10 10 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+const eyeBtn = $('eyeBtn');
+const MASK = '****';
+function renderHide() {
+  const t = T(), h = state.hidePay;
+  document.body.classList.toggle('hide-pay', h);
+  eyeBtn.innerHTML = h ? EYE_OFF : EYE;
+  eyeBtn.setAttribute('aria-pressed', h);
+  eyeBtn.setAttribute('aria-label', h ? t.show : t.hide);
+  eyeBtn.title = h ? t.show : t.hide;
+  renderRates(); renderLadder();
+}
+eyeBtn.addEventListener('click', () => { state.hidePay = !state.hidePay; save(); renderHide(); });
+
+/* ================= 事件 ================= */
+salaryInput.addEventListener('input', () => {
+  const v = Number(salaryInput.value);
+  bank();
+  state.salaryUSD = v > 0 ? v / fx() : 0;
+  save(); renderRates(); renderLadder();
+});
+
+curSelect.addEventListener('change', () => {
+  state.currency = curSelect.value;
+  save(); syncInput(); renderStatic();
+});
+
+langBtn.addEventListener('click', () => {
+  state.lang = LANGS[(LANGS.indexOf(state.lang) + 1) % LANGS.length];
+  save(); renderStatic();
+});
+
+function setRunning(on) {
+  bank();
+  state.running = on;
+  state.segStart = on ? Date.now() : null;
+  save(); renderStatus(); renderMeter(true);
+  on ? requestWake() : releaseWake();
+}
+startBtn.addEventListener('click', () => setRunning(!state.running));
+
+infoBtn.addEventListener('click', () => {
+  const open = sourcesEl.classList.toggle('open');
+  infoBtn.setAttribute('aria-expanded', open);
+});
+
+// 長按歸零：按住 1.5 秒，顏色填滿即歸零
+let holdTimer = null;
+function holdStart(e) {
+  if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+  if (e.repeat || holdTimer) return;
+  e.preventDefault();
+  resetBtn.classList.remove('done');
+  resetBtn.classList.add('holding');
+  holdTimer = setTimeout(() => {
+    holdTimer = null;
+    state.bankedUSD = 0;
+    state.segStart = state.running ? Date.now() : null;
+    save(); lastLen = -1; renderMeter(true); renderStatus();
+    resetBtn.classList.remove('holding');
+    resetBtn.classList.add('done');
+    if (navigator.vibrate) try { navigator.vibrate(30); } catch (err) {}
+    setTimeout(() => resetBtn.classList.remove('done'), 500);
+  }, 1500);
+}
+function holdEnd() {
+  if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+  resetBtn.classList.remove('holding');
+}
+resetBtn.addEventListener('pointerdown', holdStart);
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => resetBtn.addEventListener(ev, holdEnd));
+resetBtn.addEventListener('keydown', holdStart);
+resetBtn.addEventListener('keyup', holdEnd);
+resetBtn.addEventListener('contextmenu', e => e.preventDefault());
+
+// 展示模式：按數字進入，按任何位置返回
+let hintTimer = null;
+function setDisplay(on, quiet) {
+  document.body.classList.toggle('display', on);
+  if (on && !quiet) {
+    hint.textContent = T().exit;
+    hint.classList.add('show');
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => hint.classList.remove('show'), 2200);
+    const de = document.documentElement;
+    if (de.requestFullscreen && !document.fullscreenElement) de.requestFullscreen().catch(() => {});
+  }
+  if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+  container.style.transform = '';
+  lastLen = -1; renderMeter(true);
+}
+meterBox.addEventListener('click', e => {
+  if (!document.body.classList.contains('display')) { e.stopPropagation(); setDisplay(true); }
+});
+$('focusBtn').addEventListener('click', e => { e.stopPropagation(); setDisplay(true); });
+meterBox.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDisplay(!document.body.classList.contains('display')); }
+});
+document.addEventListener('click', () => {
+  if (document.body.classList.contains('display')) setDisplay(false);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.body.classList.contains('display')) setDisplay(false);
+});
+
+// 手機橫放（矮屏幕）自動進入展示模式
+const landscape = window.matchMedia('(orientation: landscape) and (max-height: 520px)');
+function onOrient() { setDisplay(landscape.matches, true); }
+landscape.addEventListener ? landscape.addEventListener('change', onOrient) : landscape.addListener(onOrient);
+
+// 防烙印：每分鐘輕微移動幾個像素
+setInterval(() => {
+  if (!state.running) return;
+  const r = document.body.classList.contains('display') ? 8 : 3;
+  const dx = Math.round((Math.random() * 2 - 1) * r), dy = Math.round((Math.random() * 2 - 1) * r);
+  container.style.transform = `translate(${dx}px, ${dy}px)`;
+}, 60000);
+
+window.addEventListener('resize', () => { lastLen = -1; renderMeter(true); ladderKey = ''; renderLadder(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') { renderMeter(true); requestWake(); }
+  else save();
+});
+window.addEventListener('pagehide', save);
+setInterval(() => { if (state.running) save(); }, 5000);
+setInterval(renderLadder, 1000);
+
+/* ================= 啟動 ================= */
+load();
+
+// 網址參數（自己架設檔案時用）：?salary=20000&cur=HKD&lang=en&auto=1&display=1
+// 在 Claude 網頁上只能用 #display：一打開就自動開始並只顯示數字
+const params = new URLSearchParams(location.search);
+if (params.get('cur') && FX[params.get('cur').toUpperCase()]) state.currency = params.get('cur').toUpperCase();
+if (params.get('lang') && I18N[params.get('lang')]) state.lang = params.get('lang');
+if (params.get('salary') && Number(params.get('salary')) > 0) state.salaryUSD = Number(params.get('salary')) / fx();
+const hashDisplay = location.hash === '#display';
+const autoStart = params.get('auto') === '1' || hashDisplay;
+
+syncInput();
+renderStatic();
+if (autoStart && !state.running) setRunning(true);
+if (state.running) requestWake();
+if (hashDisplay || params.get('display') === '1' || landscape.matches) setDisplay(true, true);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { lastLen = -1; renderMeter(true); });
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
